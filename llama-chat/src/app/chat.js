@@ -31,15 +31,26 @@ export default function Chat() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let done = false;
+      let accumulatedResponse = '';
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         const chunk = decoder.decode(value, { stream: true });
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { role: 'ai', content: chunk },
-        ]);
+        accumulatedResponse += chunk;
+
+        // Update the last AI message with the accumulated response
+        setMessages((prevMessages) => {
+          const lastMessage = prevMessages[prevMessages.length - 1];
+          if (lastMessage && lastMessage.role === 'ai') {
+            return [
+              ...prevMessages.slice(0, -1),
+              { role: 'ai', content: accumulatedResponse },
+            ];
+          } else {
+            return [...prevMessages, { role: 'ai', content: accumulatedResponse }];
+          }
+        });
       }
     } else {
       console.error('Error fetching response from backend');
