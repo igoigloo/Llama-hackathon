@@ -11,24 +11,21 @@ async def ollama_chat(websocket: WebSocket):
     await websocket.accept()
     
     try:
-        # Receive the initial data (model and question) from the client
         data = await websocket.receive_json()
-        model = data.get("model", "llama3.1")
+        model = data.get("model", "llama2")
         question = data.get("question", "Why is the sky blue?")
         
-        # Start the Ollama chat stream
         stream = ollama.chat(
             model=model,
             messages=[{'role': 'user', 'content': question}],
             stream=True
         )
         
-        # Send messages in chunks through the WebSocket
         for chunk in stream:
             content = chunk.get('message', {}).get('content', "")
-            if content:  # Only send non-empty content
+            if content:
                 await websocket.send_text(content)
-                await asyncio.sleep(0.01)  # Control the message streaming speed
+                await asyncio.sleep(0.01)
 
     except WebSocketDisconnect:
         print("WebSocket disconnected")
@@ -36,7 +33,6 @@ async def ollama_chat(websocket: WebSocket):
         print("Error:", e)
         await websocket.send_text("An error occurred while processing the request.")
     finally:
-        # Ensure the WebSocket is closed after the chat stream completes
         await websocket.close()
 
 @app.post("/chat")
@@ -46,7 +42,7 @@ async def chat(request: Request):
     
     async def generate_response() -> AsyncGenerator[str, None]:
         stream = ollama.chat(
-            model="llama3.1",  # or your preferred model
+            model="llama2",
             messages=[{'role': m['role'], 'content': m['content']} for m in messages],
             stream=True
         )
@@ -54,7 +50,6 @@ async def chat(request: Request):
         for chunk in stream:
             content = chunk.get('message', {}).get('content', "")
             if content:
-                # Format as SSE (Server-Sent Events)
                 yield f"data: {content}\n\n"
                 await asyncio.sleep(0.01)
     
